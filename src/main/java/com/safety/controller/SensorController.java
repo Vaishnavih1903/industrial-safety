@@ -1,26 +1,27 @@
 package com.safety.controller;
 
 import com.safety.ai.GroqService;
-
 import com.safety.dto.AlertMessage;
 import com.safety.dto.RiskResponse;
-
 import com.safety.entity.SensorReading;
-
 import com.safety.service.AlertService;
 import com.safety.service.SensorService;
 
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+
 @CrossOrigin(
-        origins={
+        origins = {
                 "http://localhost:5173",
-                "http://localhost:5174"
+                "http://localhost:5174",
+                "https://industril-safety.vercel.app"
         }
 )
+
 @RestController
 @RequestMapping("/sensor")
+
 public class SensorController {
 
     private final SensorService service;
@@ -28,7 +29,6 @@ public class SensorController {
     private final GroqService groq;
 
     private final AlertService alertService;
-
 
     public SensorController(
 
@@ -38,70 +38,115 @@ public class SensorController {
 
             AlertService alertService
 
-    ) {
+    ){
 
-        this.service = service;
+        this.service=service;
 
-        this.groq = groq;
+        this.groq=groq;
 
-        this.alertService = alertService;
+        this.alertService=alertService;
 
     }
 
-
     @PostMapping
 
-    public Map<String, Object> create(
+    public Map<String,Object> create(
 
             @RequestBody
             SensorReading sensor
 
-    ) {
+    ){
 
-        RiskResponse risk =
-                service.process(
-                        sensor
+        try{
+
+            RiskResponse risk=
+
+                    service.process(
+                            sensor
+                    );
+
+            if(
+                    "CRITICAL".equals(
+                            risk.getLevel()
+                    )
+            ){
+
+                alertService.send(
+
+                        new AlertMessage(
+
+                                risk.getLevel(),
+
+                                risk.getAction(),
+
+                                sensor.getZone()
+
+                        )
+
                 );
 
+            }
 
-        if (
-                "CRITICAL".equals(
-                        risk.getLevel()
-                )
-        ) {
+            String ai;
 
-            alertService.send(
+            try{
 
-                    new AlertMessage(
+                ai=
+                        groq.explain(
+                                sensor
+                        );
 
-                            risk.getLevel(),
+            }
+            catch(Exception e){
 
-                            risk.getAction(),
+                System.out.println(
+                        e.getMessage()
+                );
 
-                            sensor.getZone()
+                ai=
+                        "AI service temporarily unavailable. Risk analysis completed successfully.";
 
-                    )
+            }
+
+            return Map.of(
+
+                    "risk",
+                    risk,
+
+                    "ai",
+                    ai
 
             );
 
         }
 
+        catch(Exception e){
 
-        String ai =
-                groq.explain(
-                        sensor
-                );
+            e.printStackTrace();
 
+            return Map.of(
 
-        return Map.of(
+                    "risk",
 
-                "risk",
-                risk,
+                    Map.of(
 
-                "ai",
-                ai
+                            "score",0,
 
-        );
+                            "level","ERROR",
+
+                            "action",
+
+                            "Backend processing failed"
+
+                    ),
+
+                    "ai",
+
+                    "Simulation failed"
+
+            );
+
+        }
 
     }
 
