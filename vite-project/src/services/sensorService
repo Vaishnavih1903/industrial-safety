@@ -7,21 +7,18 @@ export async function analyzeRisk(data){
 
 try{
 
+console.log("Sending:",data);
+
 const response=
 
 await axios.post(
-
 `${API}/sensor`,
+data
+);
 
-data,
-
-{
-headers:{
-"Content-Type":
-"application/json"
-}
-}
-
+console.log(
+"Response:",
+response.data
 );
 
 return response.data;
@@ -30,7 +27,17 @@ return response.data;
 
 catch(error){
 
-console.log(error);
+console.log(
+"ERROR:"
+);
+
+console.log(
+error.response?.data
+);
+
+console.log(
+error
+);
 
 throw error;
 
